@@ -24,8 +24,13 @@ from sklearn.preprocessing import (
 )
 
 import warnings
+import geopandas as geopd
+import rtree
+from geopandas.tools import sjoin
+
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
+
 
 
 pd.options.display.max_columns = None
@@ -34,11 +39,13 @@ pd.options.display.max_columns = None
 '''
     Duplica el preprocesamiento explicado en el tp a un dataSet
 '''
-def preprocesamiento(df, medias_latitud, medias_longitud, moda_dormitorios, ohe_tipo, algo_reduccion):
+def preprocesamiento(df, feature_eliminar, medias_latitud, medias_longitud, moda_dormitorios, ohe_tipo, df_comunas):
     completar_latitudes(df, medias_latitud)
     completar_longitudes(df, medias_longitud)
     completar_dormitorios(df, moda_dormitorios)
     df = tratar_tipo(df, ohe_tipo)
+    df =crear_comunas(df, df_comunas)
+    eliminar_features(df, feature_eliminar)
     #algo_reduccion.transform(df)
     return df
 
@@ -93,3 +100,30 @@ def tratar_tipo(df, ohe_tipo):
     df = pd.concat([df, feature_tipo], axis=1)
     df.drop(columns=["tipo"],inplace=True)
     return df
+
+
+def crear_comunas(df, df_comunas):
+    dp_comunas = geopd.read_file("./comunas.csv")
+    df_comunas = dp_comunas.copy()
+    
+    df_comunas=df_comunas.filter(['COMUNAS','geometry'])
+    df_comunas.rename(columns={'COMUNAS':'comuna'},inplace=True)
+    
+    # Casteamos las comunas a enteros para mayor comodidad
+    df_comunas['comuna']=df_comunas.comuna.astype(float)
+    df_comunas['comuna']=df_comunas.comuna.astype(int)
+    
+    # Unimos los dataframes asignando la comuna que le corresponde a cada punto segun su coordenada
+    tam_inicial=df.shape[0]
+    df_comunas.set_crs('EPSG:4326', inplace=True)
+    df = df.sjoin(df_comunas, how="inner")
+    df.drop(columns='index_right', inplace=True)
+
+    #Ya no necesitare el feature geometry
+    df.drop(columns=["geometry"],inplace=True)
+    df = df.sort_index()
+    return df
+
+
+def eliminar_features(df, feature_eliminar):
+    df.drop(columns=feature_eliminar,inplace=True)

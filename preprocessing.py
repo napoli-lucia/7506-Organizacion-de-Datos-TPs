@@ -102,7 +102,12 @@ def tratar_tipo(df, ohe_tipo):
     return df
 
 
+'''
+Crea la feature comuna segun las coordenadas de la propiedad
+La comuna que le corresponde se obtiene a traves de un dataset con los limites de cada una
+'''
 def crear_comunas(df, df_comunas):
+    # Vamos a utilizar un csv con los datos que necesitamos, se obtuvo de la pagina del gobierno de la ciudad
     dp_comunas = geopd.read_file("./comunas.csv")
     df_comunas = dp_comunas.copy()
     
@@ -112,11 +117,17 @@ def crear_comunas(df, df_comunas):
     # Casteamos las comunas a enteros para mayor comodidad
     df_comunas['comuna']=df_comunas.comuna.astype(float)
     df_comunas['comuna']=df_comunas.comuna.astype(int)
+
+    # Asignamos sus geometrias a las filas cuyas coordenadas estaban en NaN y ahora hemos imputado
+    new_geometry=geopd.points_from_xy(df[df.geometry.is_empty].longitud, df[df.geometry.is_empty].latitud)
+    df.loc[df.geometry.is_empty,'geometry'] = new_geometry
     
     # Unimos los dataframes asignando la comuna que le corresponde a cada punto segun su coordenada
-    tam_inicial=df.shape[0]
     df_comunas.set_crs('EPSG:4326', inplace=True)
-    df = df.sjoin(df_comunas, how="inner")
+    df = df.sjoin(df_comunas, how="left")
+
+    # Borramos las filas que no caian dentro de los limites de la ciudad, pero sin borrar las que tenian sus coordenadas en NaN
+    df=df[~((df.index_right.isna()) & ~(df.geometry.is_empty))]
     df.drop(columns='index_right', inplace=True)
 
     #Ya no necesitare el feature geometry

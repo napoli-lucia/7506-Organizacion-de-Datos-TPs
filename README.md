@@ -5,8 +5,10 @@ Cátedra Rodríguez
 
 2do Cuatrimestre 2022
 
+
+
 #### **Integrantes:**
-*Grupo 18*
+Grupo 18
 * Analía Acevedo
 * Santiago Daniel Marczewski Neudeck
 * Lucia Belén Napoli
